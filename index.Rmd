@@ -1,5 +1,6 @@
 ---
 title: "IODS course project"
+author: Bruno Oliveira Cattelan
 output:
   html_document:
     theme: cosmo

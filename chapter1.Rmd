@@ -1,13 +1,15 @@
 
 # About the project
 
-*Write a short description about the course and add a link to your GitHub repository here. This is an R Markdown (.Rmd) file so you should use R Markdown syntax.*
+I initially found about this course thanks to a good friend and colleague. The subjects in this course interest me a lot. I believe that science should be shared as much as possible. However, I do lack some knowledge and experience relating to it. My most important contributions, the [multicast](https://github.com/bocattelan/DiscoDNC) and [linear optimization](https://github.com/bocattelan/DiscoDNC-FIFO-Optimization-Extension) extensions of [NCorg DNC](https://github.com/NetCal/DNC)  (previously DiscoDNC tool) have been shared in my old github profile. However, I believe that it was done in a limited manner. More specifically, I doubt that another researcher would be able to easily reproduce my experiments without a lot of effort on their part.
 
-```{r}
-# This is a so-called "R chunk" where you can write R code.
+Furthermore, I believe that over time my data analysis has improved quite a lot. However, I never had a focused lecture on how to analyse and share information related to results of experiemnts. Meaning I am quite excited for the data science portion of this lecture.
 
-date()
+Regarding the crash course on R. Like I mentioned in my introduction (in Moodle) I have used R during my master. In fact, this was the time I worked on the NCorg DNC tool I mentioned above. Therefore, the crash course was not necessary for me, as I already know the basics. What was new to me was Rstudio. I am quite positively surprised about it actually. My initial experiences were quite negative, and most of my previous work was done using Sublime text editor and directly using Rscript. The last class and exercises made me see the potential in this programming environment, and I am looking forward to future exercises to see how this tool can help me.
 
-```
-The text continues here.
+## Course repository
+https://github.com/bruno-cattelan/IODS-project
+
+## Old repository
+https://github.com/bocattelan
 
