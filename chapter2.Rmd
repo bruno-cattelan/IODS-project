@@ -1,4 +1,130 @@
-# Insert chapter 2 title here
+# Assigment 2: Regression
+
+In case I have made some mistake in the previous exercise, I will collect the data from the repository.
+
+```{r}
+ldata = read.csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/learning2014.txt")
+```
+We can use dim and head to get an idea of how the data looks like. First, dim tells us this dataset has 166 rows and 7 columns.
+
+```{r}
+dim(ldata)
+```
+
+Next, head will show us the first 6 rows of the data. This dataset is the compiled results of interviews performed in regards to approach to learning. The attitude column refers to their attitude in relation to statistics. Points in this case means their points in the exam they had. Deep, stra and surf relate to different approaches that can be done when studying.
+```{r}
+head(ldata)
+```
+
+We can use the summary function to get an idea of the ranges and spread of each variable. We see that on average the students were 25 years old, most students seem to have a low attitude in regards to statistics. Given that the largest score in the exam was 33 points, we will assume that was the maximum score. If that is the case, we have that most students seem to have done quite well, with the majority of students being around 2x.xx points.
+```{r}
+summary(ldata)
+```
+
+In order to facilitate the analysis, we plot the histograms of the different variables. We can see that indeed the age tends to the left of the plot, meaning that the vast majority of people were around 2x years old. The attitude is clearly in the middle, looking similar to a normal distribution. Similar behavior can be seen to Deep, Stra and Surf, although it is important to note that Stra tends more to an uniform distribution when compared to the others. Finally, as I mentioned before we can see that the majority of people got a relatively good grade, around 2x points.
+
+```{r}
+par(mfrow=c(2,3))
+hist(ldata$age,prob=T,main="Age")
+hist(ldata$attitude,prob=T,main="Attitude")
+hist(ldata$deep,prob=T,main="Deep")
+hist(ldata$stra,prob=T,main="Stra")
+hist(ldata$surf,prob=T,main="Surf")
+hist(ldata$points,prob=T,main="Points")
+```
+We can also take a look on the actual distribution of the points. In the y-axis we have each variable value, and in the x-axis we have the index they relate to. Since we want to create a regression model for predicting the points, we can order them with relation to the target column.
+
+```{r}
+par(mfrow=c(2,3))
+plot(ldata$age,main="Age")
+plot(ldata$attitude,main="Attitude")
+plot(ldata$deep,main="Deep")
+plot(ldata$stra,main="Stra")
+plot(ldata$surf,main="Surf")
+plot(ldata$points,main="Points")
+```
+
+From this, we can already make a selection of the most interesting variables. We see that Age does not seem to correlate to the points column. However, Attitude seems to have a strong correlation. It is followed by Stra and then Surf, which seems to have an inverse relation to our target variable. Therefore, we choose Stra, Attitude and Surf for our model.
+```{r}
+indexes = order(ldata$points)
+ldataOrdered = ldata[indexes,]
+par(mfrow=c(2,3))
+plot(ldataOrdered$age,main="Age")
+plot(ldataOrdered$attitude,main="Attitude")
+plot(ldataOrdered$deep,main="Deep")
+plot(ldataOrdered$stra,main="Stra")
+plot(ldataOrdered$surf,main="Surf")
+plot(ldataOrdered$points,main="Points")
+```
+We can double check our choices by literally checking the correlation of the variables to our target. As the previous plots suggested, our selection seem to have the best (inverse)association.
+
+```{r}
+cor(ldata$age, ldata$points)
+cor(ldata$attitude, ldata$points)
+cor(ldata$deep, ldata$points)
+cor(ldata$stra, ldata$points)
+cor(ldata$surf, ldata$points)
+```
+
+As mentioned above, we create a linear regression model using our subset of variables.
+```{r}
+model = lm(points ~ attitude + stra + surf, data = ldata)
+```
+
+My first analysis uses the anova function. We can see that 
+```{r}
+anova(model)
+```
+
+```{r}
+summary(model)
+```
+
+
+```{r}
+modelNoSurf = lm(points ~ attitude + stra, data = ldata)
+```
+```{r}
+anova(modelNoSurf)
+```
+```{r}
+summary(modelNoSurf)
+```
+```{r}
+modelNoSurfNoStra = lm(points ~ attitude, data = ldata)
+```
+```{r}
+anova(modelNoSurfNoStra)
+```
+```{r}
+anova(modelNoSurfNoStra)
+```
+
+```{r fig.width=10}
+par(mfrow=c(1,3))
+plot(predict(model)[indexes])
+plot(predict(modelNoSurf)[indexes])
+plot(predict(modelNoSurfNoStra)[indexes])
+```
+
+
+```{r fig.width=10, fig.height=10}
+par(mfrow=c(2,2))
+plot(model)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 *Describe the work you have done this week and summarize your learning.*
 
