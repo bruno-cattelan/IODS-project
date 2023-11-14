@@ -11,7 +11,7 @@ output:
     toc_depth: 2
     number_section: false
 ---
-
+# I initially wrote my own version of this assignment. However, looking at the exercise 2 I decided to follow it instead, to make sure I followed everything correctly. You can see my previous version trhough my previous commit.
 
 This set consists of a few numbered exercises.
 Go to each exercise in turn and do as follows:
@@ -434,6 +434,9 @@ Hints:
 - Remember to separate function arguments with a comma
 - You can draw the plot `p` by simply typing it's name: just like printing R objects.
 
+### Looking at the data
+We see that on average the students were 25 years old, most students seem to have a low attitude in regards to statistics. Given that the largest score in the exam was 33 points, we will assume that was the maximum score. If that is the case, we have that most students seem to have done quite well, with the majority of students being around 2x.xx points.
+
 ### R code
 ```{r}
 # Work with the exercise in this chunk, step-by-step. Fix the R code!
@@ -453,6 +456,19 @@ p <- ggpairs(learning2014, mapping = aes(col=gender, alpha=0.3), lower = list(co
 # draw the plot
 p
 ```
+In order to facilitate the analysis, we plot the histograms of the different variables. We can see that indeed the age tends to the left of the plot, meaning that the vast majority of people were around 2x years old. The attitude is clearly in the middle, looking similar to a normal distribution. Similar behavior can be seen to Deep, Stra and Surf, although it is important to note that Stra tends more to an uniform distribution when compared to the others. Finally, as I mentioned before we can see that the majority of people got a relatively good grade, around 2x points.
+
+```{r}
+par(mfrow=c(2,3))
+hist(learning2014$age,prob=T,main="Age")
+hist(learning2014$attitude,prob=T,main="Attitude")
+hist(learning2014$deep,prob=T,main="Deep")
+hist(learning2014$stra,prob=T,main="Stra")
+hist(learning2014$surf,prob=T,main="Surf")
+hist(learning2014$points,prob=T,main="Points")
+```
+From this, we can already make a selection of the most interesting variables. We see that Age does not seem to correlate to the points column. However, Attitude seems to have a strong correlation. It is followed by Stra and then Surf, which seems to have an inverse relation to our target variable. Therefore, we choose Stra, Attitude and Surf for our model.
+We can double check our choices by literally checking the correlation of the variables to our target. As the previous plots suggested, our selection seem to have the best (inverse)association.
 
 
 ## 2.9 Simple regression
@@ -549,6 +565,7 @@ my_model3 <- lm(points ~ attitude + stra + surf, data = learning2014)
 summary(my_model3)
 
 ```
+When looking at the summary of the models, we can see that attitude has indeed the lowest p-values. We also see that for both stra and surf we actually have too large of p-values, meaning that our model would probably perform better if we were to only use attitude.
 ## 2.11 Graphical model validation
 
 R makes it easy to graphically explore the validity of your model assumptions. If you give a linear model object as the first argument to the `plot()` function, the function automatically assumes you want diagnostic plots and will produce them. You can check the help page of plotting an lm object by typing `?plot.lm` or `help(plot.lm)` to the R console. 
@@ -597,7 +614,7 @@ par(mfrow = c(2,2))
 plot(my_model2, which=c(1,2,5))
 
 ```
-
+From these plots we can see that our model works well for points close to the mean. However, for both extremities we have much larger losses.
 
 ## 2.12 Making predictions
 

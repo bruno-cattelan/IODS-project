@@ -25,9 +25,6 @@ Deep=d_sm+d_ri+d_ue
 Surf=su_lp+su_um+su_sb
 Stra=st_os+st_tm
 
-Df=6 - learning2014data$Df
-Dh=6 - learning2014data$Dh
-
 #Attitude=learning2014data$Da+learning2014data$Db+learning2014data$Dc+learning2014data$Dd+learning2014data$De+Df+learning2014data$Dg+Dh+learning2014data$Di+learning2014data$Dj
 # Normalize the values by their mean
 Attitude = learning2014data$Attitude/10
@@ -40,9 +37,9 @@ analysisData = data.frame(learning2014data$gender, learning2014data$Age, Attitud
 colnames(analysisData) <-c("Gender", "Age", "Attitude", "Deep", "Stra", "Surf", "Points")
 
 # Save dataframe
-write_csv(analysisData, "data/analysisDataset.csv")
+write.csv(analysisData, "data/analysisDataset.csv")
 # Read it again
-analysisData2 = read_csv("data/analysisDataset.csv", show_col_types = FALSE)
+analysisData2 = read.table("data/analysisDataset.csv",header = TRUE, sep = ",", row.names = 1)
 # And take a look at its structure and values. Everything seems in order!
 str(analysisData2)
 head(analysisData2)
