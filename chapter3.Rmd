@@ -4,7 +4,7 @@ editor_options:
     wrap: 72
 ---
 
-## 3.1 Analysis
+# 3 Analysis
 
 As with before, I always prefer reading the data from the url just in
 case I made some mistake in the previous step.
@@ -50,12 +50,13 @@ alc %>% select(sex, absences, reason, traveltime) %>% gather %>% ggplot(aes(valu
 ```
 
 For comparing the multiple variables I decided to use the crosstable
-function. The first variable we look at is the sex. I would say that
-there is minimal difference between the sex and alcohol consumption, as
-we see a minimal difference in their chi-contribution. The only
-exception is for a very high consumption. If the formatting is broken, I
-suggest opening them in a new window. This order was selected due to the
-high number of elements of some variables.
+function. The first variable we look at is the sex. Both sexes have a
+rather considerable chi-square value, meaning that this variable seems
+indeed interesting for our modelling purposes.
+
+If the formatting is broken, I suggest opening them in a new window.
+This order was selected due to the high number of elements of some
+variables.
 
 ```{r, fig.height=10, fig.width=10}
 library(gmodels)
@@ -93,6 +94,37 @@ CrossTable(alc$traveltime, alc$alc_use)
 
 ## Logistic regression
 
+We now create a logistic regression model using our selected variables.
+The first thing to note is the Z-statistics. The sex (Male for reference
+class) and absences seem to be the most relevant variables. I assume
+using only male for reference is ok, as we saw mostly very similar
+values when analysing them previously. It is followed by travel
+distance, as we indicated before. It is interesting to see that for some
+of the reasons there is a high value, meaning they are likely less
+useful for our model. However, of them the variable "other" still seems
+to hold some contribution.
+
+Regarding the odds ratios, we have that a value of 1 would mean the two
+variables are independent. Larger than 1 means they are correlated and
+lower than 1 means they are negatively correlated. For our purposes I
+would argue that any value considerably away from 1 is useful for our
+model. After all, a strong indication of a value or the negation of that
+value would help guide the model. For our case, we see that sex indeed
+has a significantly larger than 1 odds ratio, with even its lower
+confidence interval above 1. Meaning a good correlation between it and
+our target. Absences on the other hand shows us that there is a
+consistent correlation, but the distance to 1 is much smaller. This was
+not shown as clearly in our previous metric. Travel time on the other
+hand shows a larger upper confidence interval, meaning that for some
+cases it does give us more information. The reason variable has the most
+interesting behavior in my opinion. Although before they had a high
+value for the Z-statistics, we now see that the odd ratio is not super
+good, but from their confidence intervals we see that they sometimes
+have a negative correlation and sometimes a positive one. I think this
+actually means they are not good predictive variables, as their
+relationship seems to change depending on the value. This would make
+learning the model, in my opinion, more complicated.
+
 ```{r}
 
 # find the model with glm()
@@ -114,6 +146,14 @@ CI <- confint(m) %>% exp
 cbind(OR, CI)
 ```
 
+With our model we can now make predictions. For this case we assume a
+probability larger than 0.5 to be TRUE, and lower than that FALSE. The
+correct predictions is the left to right diagonal in our table, and the
+wrong predictions the diagonal from right to left. In total we had 89
+wrong cases, out of 370 cases, leading us to a 0.24 loss. If we just
+guessed values, one might expect a 50% error rate. In that case, we are
+doing pretty good.
+
 ```{r}
 # predict() the probability of high_use
 probabilities <- predict(m, type = "response")
@@ -133,6 +173,32 @@ table(high_use = alc$high_use, prediction = alc$prediction)
 
 ```
 
+Since we noticed that the reason variable seems to be unreliable for the
+predictions, we try a new model without it. We actually have a lower
+score, having missed 91 values, meaning a 0.246 loss. This could be
+because at least some of the values actually contributed in some cases,
+meaning a net loss when not considering this variable.
+
+```{r}
+m <- glm(high_use ~ sex + absences + traveltime, data = alc, family = "binomial")
+
+# predict() the probability of high_use
+probabilities <- predict(m, type = "response")
+
+library(dplyr)
+# add the predicted probabilities to 'alc'
+alc <- mutate(alc, probability = probabilities)
+
+# use the probabilities to make a prediction of high_use
+alc <- mutate(alc, prediction = probability > 0.5)
+
+# see the last ten original classes, predicted probabilities, and class predictions
+select(alc, failures, absences, sex, high_use, probability, prediction) %>% tail(10)
+
+# tabulate the target variable versus the predictions
+table(high_use = alc$high_use, prediction = alc$prediction)
+```
+
 ```{r, echo=FALSE}
 # Pre-exercise-code (Run this code chunk first! Do NOT edit it.)
 
@@ -141,36 +207,9 @@ table(high_use = alc$high_use, prediction = alc$prediction)
 library(readr)
 alc <- read_csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/alc.csv", show_col_types=FALSE)
 library(dplyr)
-m <- glm(high_use ~ sex + failures + absences, data = alc, family = "binomial")
+m <- glm(high_use ~ sex + traveltime + absences + reason, data = alc, family = "binomial")
 alc <- mutate(alc, probability = predict(m, type = "response"))
 alc <- mutate(alc, prediction = probability > 0.5)
-```
-
-```{r}
-
-# initialize a plot of 'high_use' versus 'probability' in 'alc'
-g <- ggplot(alc, aes(x = probability, y = high_use))
-
-# define the geom as points and draw the plot
-g + geom_point(aes(col = prediction))
-
-# tabulate the target variable versus the predictions
-table(high_use = alc$high_use, prediction = alc$prediction) %>% prop.table %>% addmargins
-
-
-```
-
-```{r}
-# define a loss function (mean prediction error)
-loss_func <- function(class, prob) {
-  n_wrong <- abs(class - prob) > 0.5
-  mean(n_wrong)
-}
-
-# call loss_func to compute the average number of wrong predictions in the (training) data
-loss_func(class = alc$high_use, prob = alc$probability)
-
-
 ```
 
 ## Cross-validation
@@ -183,15 +222,19 @@ loss_func(class = alc$high_use, prob = alc$probability)
 library(readr)
 alc <- read_csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/alc.csv", show_col_types=FALSE)
 library(dplyr)
-m <- glm(high_use ~ sex + failures + absences, data = alc, family = "binomial")
+m <- glm(high_use ~ sex + absences + traveltime + reason, data = alc, family = "binomial")
 alc <- mutate(alc, probability = predict(m, type = "response"))
 alc <- mutate(alc, prediction = probability > 0.5)
 ```
 
-```{r}
-# Work with the exercise in this chunk, step-by-step. Fix the R code!
-# the logistic regression model m and dataset alc (with predictions) are available
+We now use cross validation with k = 10 to check how good our model
+actually is. The idea is to train and test with different combinations
+of values, in order to see how good the model reacts to our of training
+examples. We see that the error is a bit higher than before, which is
+expected. However, seems like our model slightly outperforms the model
+suggested by the exercises, which had a loss of 0.26.
 
+```{r}
 # define a loss function (average prediction error)
 loss_func <- function(class, prob) {
   n_wrong <- abs(class - prob) > 0.5
