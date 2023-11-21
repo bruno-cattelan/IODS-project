@@ -1,0 +1,211 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+## 3.1 Analysis
+
+As with before, I always prefer reading the data from the url just in
+case I made some mistake in the previous step.
+
+```{r, echo=FALSE}
+library(readr)
+alc <- read_csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/alc.csv", show_col_types=FALSE)
+```
+
+This plot gives us some insight on the variables of the dataset.
+
+```{r, fig.height=10, fig.width=10}
+library(tidyr); library(dplyr); library(ggplot2)
+
+# draw a bar plot of each variable
+gather(alc) %>% ggplot(aes(value)) + geom_bar() + facet_wrap("key", scales = "free")
+
+
+```
+
+From the previous plots we select "sex", "absences", "reason",
+"traveltime". My initial idea for selecting them is
+
+sex: both the differences in males and females (I assume males drink
+more alcohol or feel more inclined to reporting it).
+
+absences: maybe we could see some people who like to party more, or just
+have a more carefree lifestyle.
+
+reason: the reasons could also reflect on the lifestyle
+
+traveltime: perhaps the traveltime time could point to different wealth
+status, which I would think could also affect alcohol consumption.
+
+```{r, fig.height=10, fig.width=10}
+# draw a bar plot for alc variable
+alc %>% select(alc_use) %>% gather %>% ggplot(aes(value)) + geom_bar() + facet_wrap("key", scales = "free")
+
+# draw a bar plot of each variable
+alc %>% select(sex, absences, reason, traveltime) %>% gather %>% ggplot(aes(value)) + geom_bar() + facet_wrap("key", scales = "free")
+
+
+```
+
+For comparing the multiple variables I decided to use the crosstable
+function. The first variable we look at is the sex. I would say that
+there is minimal difference between the sex and alcohol consumption, as
+we see a minimal difference in their chi-contribution. The only
+exception is for a very high consumption. If the formatting is broken, I
+suggest opening them in a new window. This order was selected due to the
+high number of elements of some variables.
+
+```{r, fig.height=10, fig.width=10}
+library(gmodels)
+CrossTable(alc$sex, alc$alc_use)
+
+```
+
+A chi-square value of 0 would mean that the variables are completely
+independent. To my surprise, the highest consumption of alcohol seems to
+have a larger dependency to the lower absences. They seem to have some
+relation, just not what I expected.
+
+```{r, fig.height=10, fig.width=10}
+library(gmodels)
+CrossTable(alc$absences, alc$alc_use)
+```
+
+For the reason it seems that mostly they seem independent. However,
+there are variables which show a higher score such as reputation and
+consumption 2.
+
+```{r, fig.height=10, fig.width=10}
+library(gmodels)
+CrossTable(alc$reason, alc$alc_use)
+```
+
+As expected, there seem indeed to be some relationship between travel
+distance and alcohol consumption. We see that as the distance increases,
+the total score decreases.
+
+```{r, fig.height=10, fig.width=10}
+library(gmodels)
+CrossTable(alc$traveltime, alc$alc_use)
+```
+
+## Logistic regression
+
+```{r}
+
+# find the model with glm()
+m <- glm(high_use ~ sex + absences + traveltime + reason, data = alc, family = "binomial")
+
+# print out a summary of the model
+summary(m)
+
+# print out the coefficients of the model
+coef(m)
+
+# compute odds ratios (OR)
+OR <- coef(m) %>% exp
+
+# compute confidence intervals (CI)
+CI <- confint(m) %>% exp
+
+# print out the odds ratios with their confidence intervals
+cbind(OR, CI)
+```
+
+```{r}
+# predict() the probability of high_use
+probabilities <- predict(m, type = "response")
+
+library(dplyr)
+# add the predicted probabilities to 'alc'
+alc <- mutate(alc, probability = probabilities)
+
+# use the probabilities to make a prediction of high_use
+alc <- mutate(alc, prediction = probability > 0.5)
+
+# see the last ten original classes, predicted probabilities, and class predictions
+select(alc, failures, absences, sex, high_use, probability, prediction) %>% tail(10)
+
+# tabulate the target variable versus the predictions
+table(high_use = alc$high_use, prediction = alc$prediction)
+
+```
+
+```{r, echo=FALSE}
+# Pre-exercise-code (Run this code chunk first! Do NOT edit it.)
+
+# Click the green arrow ("Run Current Chunk") in the upper-right corner of this chunk. This will initialize the R objects needed in the exercise. Then move to Instructions of the exercise to start working.
+
+library(readr)
+alc <- read_csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/alc.csv", show_col_types=FALSE)
+library(dplyr)
+m <- glm(high_use ~ sex + failures + absences, data = alc, family = "binomial")
+alc <- mutate(alc, probability = predict(m, type = "response"))
+alc <- mutate(alc, prediction = probability > 0.5)
+```
+
+```{r}
+
+# initialize a plot of 'high_use' versus 'probability' in 'alc'
+g <- ggplot(alc, aes(x = probability, y = high_use))
+
+# define the geom as points and draw the plot
+g + geom_point(aes(col = prediction))
+
+# tabulate the target variable versus the predictions
+table(high_use = alc$high_use, prediction = alc$prediction) %>% prop.table %>% addmargins
+
+
+```
+
+```{r}
+# define a loss function (mean prediction error)
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+# call loss_func to compute the average number of wrong predictions in the (training) data
+loss_func(class = alc$high_use, prob = alc$probability)
+
+
+```
+
+## Cross-validation
+
+```{r, echo=FALSE}
+# Pre-exercise-code (Run this code chunk first! Do NOT edit it.)
+
+# Click the green arrow ("Run Current Chunk") in the upper-right corner of this chunk. This will initialize the R objects needed in the exercise. Then move to Instructions of the exercise to start working.
+
+library(readr)
+alc <- read_csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/alc.csv", show_col_types=FALSE)
+library(dplyr)
+m <- glm(high_use ~ sex + failures + absences, data = alc, family = "binomial")
+alc <- mutate(alc, probability = predict(m, type = "response"))
+alc <- mutate(alc, prediction = probability > 0.5)
+```
+
+```{r}
+# Work with the exercise in this chunk, step-by-step. Fix the R code!
+# the logistic regression model m and dataset alc (with predictions) are available
+
+# define a loss function (average prediction error)
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+# compute the average number of wrong predictions in the (training) data
+loss_func(class = alc$high_use, prob = alc$probability)
+
+# K-fold cross-validation
+library(boot)
+cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10)
+
+# average number of wrong predictions in the cross validation
+cv$delta[1]
+
+```
