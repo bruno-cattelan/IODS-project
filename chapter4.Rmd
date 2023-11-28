@@ -8,6 +8,7 @@ editor_options:
 ## Data
 Here we take a look at the data. This example dataset has 506 rows and 14 columns. The data itself is about housing values in suburbs of boston. For example, some variables represent per capita crime rate by town (crim) and average number of rooms per dwelling (rm).
 ```{r}
+library(MASS)
 data("Boston")
 str(Boston)
 summary(Boston)
@@ -20,6 +21,7 @@ We can use the pairs function to take a further look into the data and their rel
 # plot the Boston dataset with clusters
 pairs(Boston)
 ```
+
 ### Summary
 The different scales can be better seen here. We see for example that for "crim" the values stay between 0 and 100, whereas a variable such as "nox" stays between 0.3 and 0.9.
 ```{r}
@@ -27,10 +29,183 @@ The different scales can be better seen here. We see for example that for "crim"
 summary(Boston)
 ```
 
-## Scale
+### Scale
 We now use the function scale to scale (duh) the dataset. Although the variables are not in the same exact range, we see that they all have the same magnitude. The idea of standardizing the data like this is to center it around 0 with a standard deviation of 1. We can see it by summarizing the data again.
+```{r}
+boston_scaled <- as.data.frame(scale(Boston))
+summary(boston_scaled)
+```
+
+### Categorize
+By using quantiles we can discretize the crime variable and turn it from numeric to categorical. Looking at the summary again, we can see the new crime variable.
 ```{r}
 data("Boston")
 boston_scaled <- as.data.frame(scale(Boston))
+bins <- quantile(boston_scaled$crim)
+crime <- cut(boston_scaled$crim, breaks = bins, include.lowest = TRUE)
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+boston_scaled <- data.frame(boston_scaled, crime)
 summary(boston_scaled)
+```
+
+## Fitting
+
+### Test and Train Split
+For training and validation it is common to separate the data into a training dataset and a validation set. We now separate 80% of the data for training and 20% for validation. Since we want to learn to predict the crime variable, we remove it from the test dataset.
+```{r}
+n <- nrow(Boston)
+ind <- sample(n,  size = n * 0.8)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+correct_classes <- test$crime
+test <- dplyr::select(test, -crime)
+```
+
+### LDA
+Linear discriminant analysis (LDA) is more commonly used for dimensionality reduction. The idea is to find a linear combination of features that can describe or differenciate two or more classes of target objects or events. However, we can also use it as a linear classifier. The latter is done below.
+
+We also cross reference the correct classes vs the predictions. The diagonal from left to right represent the correct predictions. We can easily see that the majority of the predictions was correct.
+```{r}
+lda.fit <- lda(crime ~ ., data = train)
+predictions <- predict(lda.fit, newdata = test)
+library(gmodels)
+CrossTable(correct_classes, predictions$class)
+```
+
+## Distances
+Instead of using the crime as a target, we can try and cluster the data using k-means. For that, we will use the distance between points. This can be done using many distance computing algorithms. For our purposes I believe the euclidean distance will suffice.
+```{r}
+library(MASS)
+data("Boston")
+boston_scaled <- scale(Boston)
+dist <- dist(boston_scaled)
+summary(dist)
+```
+
+### K-means
+This is a clustering method. It will cluster the data into k different clusters. Since this method minimizes the within cluster variance, we see why I choose to look at their euclidean distances. That is, k-means minimizes the squared euclidean distances.
+
+I also plot the results for a reduced ammount of variables. We see that maybe 3 clusters was too much, as the vast majority of points fall between one (red) or the other (black) but almost no points fall in the third cluster (green)
+```{r}
+# k-means clustering
+km <- kmeans(boston_scaled, centers = 3)
+
+# plot the Boston dataset with clusters
+pairs(Boston[c("rm", "age", "dis", "crim")], col = km$cluster)
+```
+
+For that reason I redo the k-means using only 2 centers. We see that the data has a clear separation between the clusters, without too much intersections. This is good, as one of the issues of k-means is that sometimes it can bleed points from one cluster to the other due to its tendency of creating cluster of similar sizes.
+
+```{r}
+# k-means clustering
+km <- kmeans(boston_scaled, centers = 2)
+
+# plot the Boston dataset with clusters
+pairs(Boston[c("rm", "age", "dis", "crim")], col = km$cluster)
+```
+
+## Bonus
+We now perform LDA using the clusters as targets instead of the variable crime. Since we will need a proper clustering for our predictions, I will do a small search of different cluster numbers with a set seed to remove the randomness of selecting the initial clusters.
+```{r}
+library(ggplot2)
+set.seed(123)
+k_max <- 10
+twcss <- sapply(1:k_max, function(k){kmeans(Boston, k)$tot.withinss})
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+```
+
+This metric can give us an indication of the number of clusters to use. We see a drastic reduction of it around 3 clusters, and so this is the value we will use next. It is important to note that this goes against my previous experience. However, now that we set the seed our k-means should have a similar behavior to this last one.
+
+```{r}
+library(MASS)
+set.seed(123)
+data("Boston")
+boston_scaled <- as.data.frame(scale(Boston))
+
+km <- kmeans(boston_scaled, centers = 3)
+
+boston_scaled$cluster <- km$cluster
+
+ind <- sample(nrow(boston_scaled),  size = nrow(boston_scaled) * 0.8)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+correct_classes <- test$cluster
+test <- dplyr::select(test, -cluster)
+
+lda.fit = lda(cluster ~ ., data=train)
+```
+
+With our new model, we can once again predict and see a table of results. And it looks good! The vast majority of points have been correctly predicted. We can also see what I mentioned before. The sizes of the clusters are remarkably similar, all of them around 30 points.
+
+```{r}
+lda.pred <- predict(lda.fit, newdata = test)
+table(correct = correct_classes, predicted = lda.pred$class)
+```
+
+We can also plot our results using arrows to represent the relationship of the original variables to the LDA solution. We see that both "rad" and "age" seem to be the major variables in this new space. Naturally the other variables have some effect, like "tax". Still, these two seem to be the most influential. This is supported both by their lengths (meaning a larger variation) and the angle between them, showing almost no correlation (90 degree angle, or close to) which is ideal for a vector space.
+
+```{r}
+# the function for lda biplot arrows
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  graphics::arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+# target classes as numeric
+classes <- as.numeric(train$cluster)
+
+# plot the lda results (select both lines and execute them at the same time!)
+plot(lda.fit, dimen = 2)
+lda.arrows(lda.fit, myscale = 2)
+
+```
+
+## SUPER Bonus
+```{r}
+##################################
+library(MASS)
+boston_scaled <- read.table("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/boston_scaled.txt",sep=",", header = T)
+boston_scaled$crime <- factor(boston_scaled$crime, levels = c("low", "med_low", "med_high", "high"))
+ind <- sample(nrow(boston_scaled),  size = nrow(boston_scaled) * 0.8)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+correct_classes <- test$crime
+test <- dplyr::select(test, -crime)
+lda.fit = lda(crime ~ ., data=train)
+
+library(plotly)
+model_predictors <- dplyr::select(train, -crime)
+dim(model_predictors)
+dim(lda.fit$scaling)
+matrix_product <- as.matrix(model_predictors) %*% lda.fit$scaling
+matrix_product <- as.data.frame(matrix_product)
+plot_ly(x = matrix_product$LD1, y = matrix_product$LD2, z = matrix_product$LD3, type= 'scatter3d', mode='markers', color = train$crime)
+
+# And now with k-means
+###################################
+library(MASS)
+set.seed(123)
+data("Boston")
+boston_scaled <- as.data.frame(scale(Boston))
+km <- kmeans(boston_scaled, centers = 3)
+boston_scaled$cluster <- km$cluster
+ind <- sample(nrow(boston_scaled),  size = nrow(boston_scaled) * 0.8)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+correct_classes <- test$cluster
+test <- dplyr::select(test, -cluster)
+lda.fit = lda(cluster ~ ., data=train)
+
+library(plotly)
+model_predictors <- dplyr::select(train, -cluster)
+dim(model_predictors)
+dim(lda.fit$scaling)
+matrix_product <- as.matrix(model_predictors) %*% lda.fit$scaling
+matrix_product <- as.data.frame(matrix_product)
+plot_ly(x = matrix_product$LD1, y = matrix_product$LD2, z = matrix_product$LD3, type= 'scatter3d', mode='markers')
+
 ```
