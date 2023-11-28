@@ -165,6 +165,7 @@ lda.arrows(lda.fit, myscale = 2)
 ```
 
 ## SUPER Bonus
+We can now merge our different approaches and compare them. We can see that both plots are in fact quite similar. However, I would argue that the k-means one is in fact better, as we can see that in the cluster 1 (purple) we have all points actually together in the left part of the plot, whereas in the previous one we had some intersection of different values there. It is important to note, however, that I used our value of 3 clusters. The previous coloring however had more options, and so this difference might actually be quite minimal. Specially since the points colored there were in fact the next closes value (high and mid high).
 ```{r}
 ##################################
 library(MASS)
@@ -186,26 +187,9 @@ matrix_product <- as.data.frame(matrix_product)
 plot_ly(x = matrix_product$LD1, y = matrix_product$LD2, z = matrix_product$LD3, type= 'scatter3d', mode='markers', color = train$crime)
 
 # And now with k-means
-###################################
-library(MASS)
-set.seed(123)
-data("Boston")
-boston_scaled <- as.data.frame(scale(Boston))
-km <- kmeans(boston_scaled, centers = 3)
-boston_scaled$cluster <- km$cluster
-ind <- sample(nrow(boston_scaled),  size = nrow(boston_scaled) * 0.8)
-train <- boston_scaled[ind,]
-test <- boston_scaled[-ind,]
-correct_classes <- test$cluster
-test <- dplyr::select(test, -cluster)
-lda.fit = lda(cluster ~ ., data=train)
+km <- kmeans(train %>% dplyr::select(-crime), centers = 3)
+train$cluster <- km$cluster
 
-library(plotly)
-model_predictors <- dplyr::select(train, -cluster)
-dim(model_predictors)
-dim(lda.fit$scaling)
-matrix_product <- as.matrix(model_predictors) %*% lda.fit$scaling
-matrix_product <- as.data.frame(matrix_product)
-plot_ly(x = matrix_product$LD1, y = matrix_product$LD2, z = matrix_product$LD3, type= 'scatter3d', mode='markers')
+plot_ly(x = matrix_product$LD1, y = matrix_product$LD2, z = matrix_product$LD3, type= 'scatter3d', mode='markers', color = train$cluster)
 
 ```
