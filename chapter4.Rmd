@@ -1,0 +1,36 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# 4 Analysis
+## Data
+Here we take a look at the data. This example dataset has 506 rows and 14 columns. The data itself is about housing values in suburbs of boston. For example, some variables represent per capita crime rate by town (crim) and average number of rooms per dwelling (rm).
+```{r}
+data("Boston")
+str(Boston)
+summary(Boston)
+head(Boston)
+```
+
+### Pairs
+We can use the pairs function to take a further look into the data and their relationships. This function plots each variable against the other. We can also see the discrete variables. For example, "chas" which takes values of 1 or 0. The plot therefore shows how the other variables relate to their values. Some variables show a strong relation such as "lstat" and "medv". This makes sense, as the former is the percentage of lower status of the population and the latter is the median value of owner-occupied homes in $1000s. I think this plots also shows us why we need to standardize the dataset. Different variables also have very different scales. 
+```{r, fig.height=10, fig.width=10}
+# plot the Boston dataset with clusters
+pairs(Boston)
+```
+### Summary
+The different scales can be better seen here. We see for example that for "crim" the values stay between 0 and 100, whereas a variable such as "nox" stays between 0.3 and 0.9.
+```{r}
+# plot the Boston dataset with clusters
+summary(Boston)
+```
+
+## Scale
+We now use the function scale to scale (duh) the dataset. Although the variables are not in the same exact range, we see that they all have the same magnitude. The idea of standardizing the data like this is to center it around 0 with a standard deviation of 1. We can see it by summarizing the data again.
+```{r}
+data("Boston")
+boston_scaled <- as.data.frame(scale(Boston))
+summary(boston_scaled)
+```
