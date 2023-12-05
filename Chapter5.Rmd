@@ -95,6 +95,9 @@ tea_time <- read.csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki
 summary(tea_time)
 view(tea_time)
 ```
+Multiple correspondence analysis represents data in a low dimensional space. It can be seen as similar to PCA, but can be applied to categorical data.
+
+For the factor map, we can interprete the distance between points as a metric of their similarity. For example, tea bags seem close to chain shops, wereas unpackaged tea seems close to tea shops. We see a similar behavior in the biplot.
 
 ```{r}
 # multiple correspondence analysis
@@ -105,4 +108,6 @@ summary(mca)
 
 # visualize MCA
 plot(mca, invisible=c("ind"), graph.type = "classic",habillage = "quali")
+library(factoextra)
+fviz_mca_biplot(mca)
 ```
