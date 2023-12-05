@@ -1,0 +1,108 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# 5 Analysis
+As usual, even though I finished the wrangling data part, I always rather use the one given by the lecturer.
+```{r}
+library(readr)
+human <- read_csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/human2.csv")
+```
+
+Our first step is to move the country column to rownames.
+
+```{r}
+# move the country names to rownames
+library(tibble)
+human <- column_to_rownames(human, "Country")
+```
+
+We can then take a closer look at the data. From the previous step we have now each country as an index. Each column therefore refers to the data of that country. We have
+
+- Edu2.FM 
+ - People with secondary education for female.
+- Labo.FM 
+ - Labour force participation rate for female.
+- Life.Exp
+ - Life expectancy at birth.
+- Edu.Exp
+ - Expected years of education.
+- GNI
+ - Gross National Income per capta
+- Mat.Mor
+ - Maternal mortality rate.
+- Ado.Birth
+ - Adolescent birth rate.
+- Parli.F
+ - Representation in Parliament (percentage).
+ 
+We can also notice that some variables have much larger magnitudes then others. This can make further analysis difficult, and so later on we will scale the data to solve this.
+
+```{r}
+head(human)
+summary(human)
+```
+I personally enjoy the ggpairs function to get an idea of the data. On the diagonal we see the distribution of the data. On the lower part of the plots we see the relation of variable values in relation to the other variables. On the upper part of the plots we have the correlation of the variables. 
+
+```{r, fig.height=15, fig.width=10}
+library(GGally)
+ggpairs(human, progress = FALSE)
+```
+
+## PCA
+
+We now use PCA in our data without any more preprocessing. It linearly transforms the data into a new coordinate system. We can use this for dimensionality reduction, for example in machine learning tasks. As expected, GNI overwhelms all other variables in the representation due to its much larger magnitude.
+
+```{r, fig.height=10, fig.width=10}
+# perform principal component analysis (with the SVD method)
+pca_human <- prcomp(human)
+
+# draw a biplot of the principal component representation and the original variables
+biplot(pca_human, choices = 1:2, cex = c(0.8, 1), col = c("grey40", "deeppink2"))
+```
+
+However, we can redo the previous analysis on a scaled version of the data. We now see a much more distributed spread of vector magnitudes for the different variables.
+
+For example, we see that variables which have a close relationship in real life end up having similar vectors. Look at GNI and secondary education. It is well known that wealthier countries also have larger amount of education. Interestingly, this relationship is not indicated by the correlation of these two variables. Other related variables are the life expectancy and expected years of education.On the other side we have adolescent births and mother mortality. These two variables have similar vectors, as they have a strong interaction statistically. The final two vectors relate to female participation in parliament and work force.
+
+From that, my interpretation of these component dimensions is country wealth for PC1 and female participation (power) both in politics and economically for PC2.
+
+```{r, fig.height=10, fig.width=10}
+library(dplyr)
+human_std <- scale(human)
+human_std2 <- human %>% rename(`Female secondary education` = Edu2.FM, `Female in the work force` = Labo.FM, 
+                     `Life expectancy` = Life.Exp, `Expected education` = Edu.Exp, `Gross income per capta` = GNI,
+                      `Maternal mortality` = Mat.Mor, `Adolescent birth` = Ado.Birth, `Female participation in parliament` = Parli.F) %>% scale
+# perform principal component analysis (with the SVD method)
+pca_human <- prcomp(human_std)
+# draw a biplot of the principal component representation and the original variables
+pca_human2 <- prcomp(human_std2)
+biplot(pca_human2, choices = 1:2, cex = c(0.1, 0.7), col = c("grey40", "deeppink2"))
+
+# draw a biplot of the principal component representation and the original variables
+biplot(pca_human, choices = 1:2, cex = c(0.8, 1), col = c("grey40", "deeppink2"))
+```
+
+## MCA
+
+For this next part we will make use of the "tea" dataset. Taking a basic look at the data using summary and view. It is a fun dataset, with difference types of tea, how they are consumed, with or no sugar, where were they bought and if they drink said tea at lunch.
+
+```{r}
+library(FactoMineR)
+tea_time <- read.csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/tea_time.csv", stringsAsFactors = TRUE)
+summary(tea_time)
+view(tea_time)
+```
+
+```{r}
+# multiple correspondence analysis
+mca <- MCA(tea_time, graph = FALSE)
+
+# summary of the model
+summary(mca)
+
+# visualize MCA
+plot(mca, invisible=c("ind"), graph.type = "classic",habillage = "quali")
+```

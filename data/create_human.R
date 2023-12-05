@@ -34,3 +34,33 @@ human2 = read.table("data/human.csv",header = TRUE, sep = ",", row.names = 1)
 # And take a look at its structure and values. Everything seems in order!
 str(human2)
 head(human2)
+
+##### Assigment 5 ##### 
+# We start by explaining the variables
+
+# columns to keep
+keep <- c("Country", "PSEf", "LFPRf", "LEB", "EYE", "GNI", "MMR", "ABR", "PRP")
+
+# select the 'keep' columns
+human <- select(human, one_of(keep))
+
+# print out a completeness indicator of the 'human' data
+complete.cases(human)
+
+# print out the data along with a completeness indicator as the last column
+data.frame(human[-1], comp = complete.cases(human))
+
+# filter out all rows with NA values
+human_ <- filter(human, complete.cases(human))
+
+# Remove points not relating to countries
+last <- nrow(human_) - 7
+human_ <- human_[1:last, ]
+
+# Save dataframe
+write.csv(human_, "data/human.csv")
+# Read it again
+human2 = read.table("data/human.csv",header = TRUE, sep = ",", row.names = 1)
+# And take a look at its structure and values. Everything seems in order!
+str(human2)
+head(human2)
