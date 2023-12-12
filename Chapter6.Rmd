@@ -1,0 +1,77 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# 6 Analysis
+We start by creating the data from the data wrangling step.
+```{r}
+library(readr)
+library(dplyr)
+
+bprs <- read_delim("https://raw.githubusercontent.com/KimmoVehkalahti/MABS/master/Examples/data/BPRS.txt", delim = " ")
+rats <- read_delim("data/rats.txt", delim = "\t")
+
+dim(bprs)
+dim(rats)
+
+summary(bprs)
+summary(rats)
+
+library(data.table)
+bprs_long <- melt(setDT(bprs), id.vars = c("treatment","subject"), variable.name = "week")
+rats_long <- melt(setDT(rats), id.vars = c("ID","Group"), variable.name = "time")
+
+summary(bprs_long)
+summary(rats_long)
+```
+# Rats
+
+This dataset is about the weights of rats over a period of weeks. We can get a better idea of the values (wegiths) by creating a summary.
+
+```{r}
+library(tidyverse)
+library(rstatix)
+group_by(rats_long, time) %>% 
+  get_summary_stats(value)
+```
+
+## Boxplot
+
+First we create boxplots with time in the x-axis and value on y-axis. Meaning we have over the weeks the values of the rows with the given ids. We can see a clear increase on the median of value over the weeks. Makes sense, as the value here is in fact the weight of the rats. We also know that there were 3 groups given different diets. This can also be seen (clusters of black points).
+
+```{r}
+library(ggplot2)
+ggplot(rats_long, aes(time, value, fill = time)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2) +
+  guides(fill = "none")
+```
+
+## Mean per Group
+
+We can see the behavior of the different groups clearer by creating a plot of the mean value per group over the weeks.
+
+```{r}
+aggregated_rats <-
+  rats_long %>%
+  group_by(Group, time) %>%
+  summarize(mean = mean(value,na.rm=TRUE))
+
+ggplot(aggregated_rats, aes(time, mean, col = Group)) +
+geom_point() 
+```
+
+# BPRS 
+
+In this dataset we have data about 40 males that were subjected to different treatments. The main information is the assessment of 18 symptoms and their severity. So over time, hopefully the treatments worked and we see a decline on the severity of symptoms.
+
+From the summary we can already see that in average there was a strong reduction on the total symptom intensity.
+
+```{r}
+library(tidyverse)
+library(rstatix)
+group_by(bprs_long, week) %>% 
+  get_summary_stats(value)
+```
