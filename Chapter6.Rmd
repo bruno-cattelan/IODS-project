@@ -26,7 +26,7 @@ rats_long <- melt(setDT(rats), id.vars = c("ID","Group"), variable.name = "time"
 summary(bprs_long)
 summary(rats_long)
 ```
-# Rats
+## Rats
 
 This dataset is about the weights of rats over a period of weeks. We can get a better idea of the values (wegiths) by creating a summary.
 
@@ -37,7 +37,7 @@ group_by(rats_long, time) %>%
   get_summary_stats(value)
 ```
 
-## Boxplot
+### Boxplot
 
 First we create boxplots with time in the x-axis and value on y-axis. Meaning we have over the weeks the values of the rows with the given ids. We can see a clear increase on the median of value over the weeks. Makes sense, as the value here is in fact the weight of the rats. We also know that there were 3 groups given different diets. This can also be seen (clusters of black points).
 
@@ -49,7 +49,7 @@ ggplot(rats_long, aes(time, value, fill = time)) +
   guides(fill = "none")
 ```
 
-## Mean per Group
+### Mean per Group
 
 We can see the behavior of the different groups clearer by creating a plot of the mean value per group over the weeks.
 
@@ -63,7 +63,7 @@ ggplot(aggregated_rats, aes(time, mean, col = Group)) +
 geom_point() 
 ```
 
-# BPRS 
+## BPRS 
 
 In this dataset we have data about 40 males that were subjected to different treatments. The main information is the assessment of 18 symptoms and their severity. So over time, hopefully the treatments worked and we see a decline on the severity of symptoms.
 
@@ -74,4 +74,24 @@ library(tidyverse)
 library(rstatix)
 group_by(bprs_long, week) %>% 
   get_summary_stats(value)
+```
+
+### Linear Model
+
+We can create a linear model to predict how each subject behaves over time.
+
+```{r}
+# fit a linear model
+my_model <- lm(value ~ treatment + subject + week, data = bprs_long)
+
+# print out a summary of the model
+summary(my_model)
+```
+
+And plot the predictions! This shows us how the prediction for the values evolve over the weeks.
+
+```{r}
+library(ggplot2)
+library(jtools)
+effect_plot(my_model, pred = week)
 ```
